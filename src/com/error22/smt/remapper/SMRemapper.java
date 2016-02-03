@@ -9,39 +9,44 @@ import java.lang.reflect.Modifier;
 import java.nio.charset.Charset;
 import java.util.Enumeration;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.jar.JarOutputStream;
 
+import com.error22.smt.remapper.parser.AstralMapLexer;
+import com.error22.smt.remapper.parser.AstralMapListener;
+import com.error22.smt.remapper.parser.AstralMapParser;
+import com.google.common.collect.BiMap;
+import com.google.common.collect.HashBiMap;
+import org.antlr.v4.runtime.ANTLRFileStream;
+import org.antlr.v4.runtime.ANTLRInputStream;
+import org.antlr.v4.runtime.CommonTokenStream;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.commons.Remapper;
 import org.objectweb.asm.tree.ClassNode;
 
 import com.google.common.io.Files;
-import com.google.gson.GsonBuilder;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
 
 public class SMRemapper extends Remapper {
 	public static final int CLASS_LENGTH = ".class".length();
-	private HashMap<String, String> classMap;
-	private HashMap<String, ClassNode> classNodeMap;
-	private HashMap<StringTriple, StringTriple> fieldMap, methodMap;
-	private HashMap<String, JarEntry> jarMap;
+	private BiMap<String, String> classMap;
+	private Map<String, ClassNode> classNodeMap;
+	private Map<StringTriple, StringTriple> fieldMap, methodMap;
+	private Map<String, JarEntry> jarMap;
 	private JarFile jar;
 	private boolean keepSource;
 	private ILog log;
 
 	public SMRemapper(ILog log) {
 		this.log = log;
-		classMap = new HashMap<String, String>();
-		fieldMap = new HashMap<StringTriple, StringTriple>();
-		methodMap = new HashMap<StringTriple, StringTriple>();
-		classNodeMap = new HashMap<String, ClassNode>();
-		jarMap = new HashMap<String, JarEntry>();
+		classMap = new HashBiMap<String, String>.create();
+		fieldMap = new HashMap<>();
+		methodMap = new HashMap<>();
+		classNodeMap = new HashMap<>();
+		jarMap = new HashMap<>();
 	}
 
 	/**
@@ -85,112 +90,14 @@ public class SMRemapper extends Remapper {
 	public void loadMapping(File mapping, boolean reverse) throws IOException {
 		log.log("Loading mappings...");
 
-		String data = Files.toString(mapping, Charset.defaultCharset());
-		if (!data.substring(data.indexOf("<") + 1, data.indexOf(">")).equals("smtmap 1")) {
-			log.log("Unsupported mapping format!");
-			throw new RuntimeException("Unsupported mapping format!");
-		}
+		// Parse with ANTLR
+		ANTLRInputStream input = new ANTLRFileStream(mapping.getAbsolutePath(), "UTF-8");
+		AstralMapLexer lexer = new AstralMapLexer(input);
+		CommonTokenStream tokens = new CommonTokenStream(lexer);
+		AstralMapParser parser = new AstralMapParser(tokens);
+		AstralMapParser.MapFileContext mapfile = parser.mapFile();
 
-		JsonObject mappingsJson = new GsonBuilder().create().fromJson(data.substring(data.indexOf(">") + 1),
-				JsonObject.class);
 
-		log.log("    Loading classes...");
-		JsonArray classesJson = mappingsJson.getAsJsonArray("classes");
-		for (JsonElement elem : classesJson) {
-			JsonObject obj = (JsonObject) elem;
-			String oldName = obj.getAsJsonPrimitive("oldName").getAsString();
-			String newName = obj.getAsJsonPrimitive("newName").getAsString();
-
-			if (reverse) {
-				String temp = oldName;
-				oldName = newName;
-				newName = temp;
-			}
-
-			classMap.put(oldName, newName);
-		}
-
-		log.log("    Loading fields...");
-		JsonArray fieldsJson = mappingsJson.getAsJsonArray("fields");
-		for (JsonElement elem : fieldsJson) {
-			JsonObject obj = (JsonObject) elem;
-			String oldClass = obj.getAsJsonPrimitive("oldClass").getAsString();
-			String oldName = obj.getAsJsonPrimitive("oldName").getAsString();
-			String oldDesc = obj.getAsJsonPrimitive("oldDesc").getAsString();
-			String newClass = obj.getAsJsonPrimitive("newClass").getAsString();
-			String newName = obj.getAsJsonPrimitive("newName").getAsString();
-			String newDesc = obj.getAsJsonPrimitive("newDesc").getAsString();
-
-			if (reverse) {
-				String temp = oldName;
-				oldName = newName;
-				newName = temp;
-
-				temp = oldDesc;
-				oldDesc = newDesc;
-				newDesc = temp;
-
-				temp = oldClass;
-				oldClass = newClass;
-				newClass = temp;
-			}
-
-			fieldMap.put(new StringTriple(oldClass, oldName, oldDesc), new StringTriple(newClass, newName, newDesc));
-		}
-
-		log.log("    Loading methods...");
-		JsonArray methodsJson = mappingsJson.getAsJsonArray("methods");
-		for (JsonElement elem : methodsJson) {
-			JsonObject obj = (JsonObject) elem;
-			String oldClass = obj.getAsJsonPrimitive("oldClass").getAsString();
-			String oldName = obj.getAsJsonPrimitive("oldName").getAsString();
-			String oldDesc = obj.getAsJsonPrimitive("oldDesc").getAsString();
-			String newClass = obj.getAsJsonPrimitive("newClass").getAsString();
-			String newName = obj.getAsJsonPrimitive("newName").getAsString();
-			String newDesc = obj.getAsJsonPrimitive("newDesc").getAsString();
-
-			if (reverse) {
-				String temp = oldName;
-				oldName = newName;
-				newName = temp;
-
-				temp = oldDesc;
-				oldDesc = newDesc;
-				newDesc = temp;
-
-				temp = oldClass;
-				oldClass = newClass;
-				newClass = temp;
-			}
-
-			methodMap.put(new StringTriple(oldClass, oldName, oldDesc), new StringTriple(newClass, newName, newDesc));
-		}
-	}
-
-	public void displayMappingInfo(File mapping) throws IOException {
-		String data = Files.toString(mapping, Charset.defaultCharset());
-		if (!data.substring(data.indexOf("<") + 1, data.indexOf(">")).equals("smtmap 1")) {
-			log.log("Unsupported mapping format!");
-			throw new RuntimeException("Unsupported mapping format!");
-		}
-
-		JsonObject mappingsJson = new GsonBuilder().create().fromJson(data.substring(data.indexOf(">") + 1),
-				JsonObject.class);
-
-		JsonObject info = mappingsJson.getAsJsonObject("info");
-
-		log.log("Mapping Info:");
-		log.log("    StarMade Build : " + info.getAsJsonPrimitive("build").getAsString());
-		log.log("    Mapping Version: " + info.getAsJsonPrimitive("version").getAsString());
-		log.log("    Mapping Date   : " + info.getAsJsonPrimitive("date").getAsString());
-		String creator = info.getAsJsonPrimitive("creator").getAsString();
-		log.log("    Mapping Creator: " + creator + " ("
-				+ (creator.equalsIgnoreCase("error22") ? "Official" : "Unofficial") + ")");
-		if (!creator.equalsIgnoreCase("error22")) {
-			log.log("    * WARNING * You are using an unofficial mapping file.");
-			log.log("    * WARNING * This may cause issues, do not report any issues directly to SMT");
-			log.log("    * WARNING * as it may be the mapping creators fault, ask them first!");
-		}
 	}
 
 	/**
@@ -340,7 +247,7 @@ public class SMRemapper extends Remapper {
 		ClassNode clazz = getClass(owner);
 
 		if (mapped != null) {
-			return mapped.getB();
+			return mapped.getName();
 		} else if (checkParents(access) && clazz != null) {
 			if (clazz.superName != null) {
 				String map = mapFieldName(clazz.superName, name, desc, access, false);
@@ -364,7 +271,7 @@ public class SMRemapper extends Remapper {
 		ClassNode clazz = getClass(owner);
 
 		if (mapped != null) {
-			return mapped.getB();
+			return mapped.getName();
 		} else if (checkParents(access) && clazz != null) {
 			if (clazz.superName != null) {
 				String map = mapMethodName(clazz.superName, name, desc, access, false);

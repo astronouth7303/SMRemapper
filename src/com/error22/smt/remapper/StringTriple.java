@@ -1,33 +1,33 @@
 package com.error22.smt.remapper;
 
 public class StringTriple {
-	private String a, b, c;
+	private String cls, name, sig;
 
-	public StringTriple(String a, String b, String c) {
-		this.a = a;
-		this.b = b;
-		this.c = c;
+	public StringTriple(String cls, String name, String sig) {
+		this.cls = cls;
+		this.name = name;
+		this.sig = sig;
 	}
 
-	public String getA() {
-		return a;
+	public String getCls() {
+		return cls;
 	}
 
-	public String getB() {
-		return b;
+	public String getName() {
+		return name;
 	}
 
-	public String getC() {
-		return c;
+	public String getSig() {
+		return sig;
 	}
 
 	@Override
 	public int hashCode() {
 		final int prime = 31;
 		int result = 1;
-		result = prime * result + ((a == null) ? 0 : a.hashCode());
-		result = prime * result + ((b == null) ? 0 : b.hashCode());
-		result = prime * result + ((c == null) ? 0 : c.hashCode());
+		result = prime * result + ((cls == null) ? 0 : cls.hashCode());
+		result = prime * result + ((name == null) ? 0 : name.hashCode());
+		result = prime * result + ((sig == null) ? 0 : sig.hashCode());
 		return result;
 	}
 
@@ -40,27 +40,27 @@ public class StringTriple {
 		if (getClass() != obj.getClass())
 			return false;
 		StringTriple other = (StringTriple) obj;
-		if (a == null) {
-			if (other.a != null)
+		if (cls == null) {
+			if (other.cls != null)
 				return false;
-		} else if (!a.equals(other.a))
+		} else if (!cls.equals(other.cls))
 			return false;
-		if (b == null) {
-			if (other.b != null)
+		if (name == null) {
+			if (other.name != null)
 				return false;
-		} else if (!b.equals(other.b))
+		} else if (!name.equals(other.name))
 			return false;
-		if (c == null) {
-			if (other.c != null)
+		if (sig == null) {
+			if (other.sig != null)
 				return false;
-		} else if (!c.equals(other.c))
+		} else if (!sig.equals(other.sig))
 			return false;
 		return true;
 	}
 
 	@Override
 	public String toString() {
-		return "StringTriple [a=" + a + ", b=" + b + ", c=" + c + "]";
+		return "StringTriple [class=" + cls + ", name=" + name + ", sig=" + sig + "]";
 	}
 
 }
