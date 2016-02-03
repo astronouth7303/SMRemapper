@@ -1,7 +1,7 @@
 package com.error22.smt.remapper;
 
-public class StringTriple {
-	private String cls, name, sig;
+public final class StringTriple {
+	private final String cls, name, sig;
 
 	public StringTriple(String cls, String name, String sig) {
 		this.cls = cls;

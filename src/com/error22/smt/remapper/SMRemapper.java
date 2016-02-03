@@ -27,13 +27,14 @@ import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.commons.Remapper;
 import org.objectweb.asm.tree.ClassNode;
 
-import com.google.common.io.Files;
-
 public class SMRemapper extends Remapper {
 	public static final int CLASS_LENGTH = ".class".length();
+
+	// From the map file
 	private BiMap<String, String> classMap;
+	private BiMap<StringTriple, StringTriple> fieldMap, methodMap;
+
 	private Map<String, ClassNode> classNodeMap;
-	private Map<StringTriple, StringTriple> fieldMap, methodMap;
 	private Map<String, JarEntry> jarMap;
 	private JarFile jar;
 	private boolean keepSource;
@@ -42,8 +43,8 @@ public class SMRemapper extends Remapper {
 	public SMRemapper(ILog log) {
 		this.log = log;
 		classMap = HashBiMap.create();
-		fieldMap = new HashMap<>();
-		methodMap = new HashMap<>();
+		fieldMap = HashBiMap.create();
+		methodMap = HashBiMap.create();
 		classNodeMap = new HashMap<>();
 		jarMap = new HashMap<>();
 	}
@@ -106,6 +107,13 @@ public class SMRemapper extends Remapper {
 
 		log.log("    Loading methods...");
 		(new MethodScanner(mapfile)).scanClasses();
+
+		// We're cheating here, just reverse them after everyone's done
+		if (reverse) {
+			classMap = classMap.inverse();
+			fieldMap = fieldMap.inverse();
+			methodMap = methodMap.inverse();
+		}
 	}
 
 	/**
@@ -267,7 +275,7 @@ public class SMRemapper extends Remapper {
 				if (mdc != null && mdc.newname != null) {
 					StringTriple oldst = new StringTriple(oldname, mdc.oldname.getText(), su.make(mdc, true));
 					StringTriple newst = new StringTriple(newname, mdc.newname.getText(), su.make(mdc, false));
-					fieldMap.put(oldst, newst);
+					methodMap.put(oldst, newst);
 				}
 			}
 		}
@@ -446,6 +454,7 @@ public class SMRemapper extends Remapper {
 		if (mapped != null) {
 			return mapped.getName();
 		} else if (checkParents(access) && clazz != null) {
+			// Check to see if it was renamed in any superclass or interface
 			if (clazz.superName != null) {
 				String map = mapMethodName(clazz.superName, name, desc, access, false);
 				if (map != null) {
