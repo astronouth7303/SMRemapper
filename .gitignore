@@ -1,5 +1,7 @@
 .settings
-bin
+bin/
 .classpath
 .project
-run
+run/
+gen/
+.idea/

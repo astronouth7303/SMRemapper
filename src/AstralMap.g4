@@ -47,19 +47,11 @@ dims
 	;
 
 classDeclaration
-    :    className '{' classBody* '}'
-    ;
-
-className
-    :   dottedName (ARROW dottedName)?
+    :    oldname=dottedName (ARROW newname=dottedName)? '{' classBody* '}'
     ;
 
 subclassDeclaration
-    :    subclassName '{' classBody* '}'
-    ;
-
-subclassName
-    :   basicName (ARROW basicName)?
+    :    oldname=basicName (ARROW newname=basicName)? '{' classBody* '}'
     ;
 
 classBody
@@ -69,24 +61,23 @@ classBody
     ;
 
 fieldDeclaration
-	:	type basicName (ARROW basicName)? ';'
+	:	type oldname=basicName (ARROW newname=basicName)? ';'
 	;
 
 methodDeclaration
     // Not sure what dims is here for, implies methods in the form of
     // int foobar()[] or int[] foobar()[]
-	:	result basicName (ARROW basicName)? '(' parameterList? ')' dims? ';'
+	:	result oldname=basicName (ARROW newname=basicName)? '(' (parameter (',' parameter)*)? ')' ';'
 	;
+
+parameter
+    : type
+    ;
 
 result
 	:	type
 	|	'void'
 	;
-
-parameterList
-    :   type (',' type)*
-    ;
-
 
 // TOP LEVEL RULE
 mapFile
