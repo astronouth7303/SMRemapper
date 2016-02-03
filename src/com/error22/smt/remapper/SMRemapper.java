@@ -147,7 +147,7 @@ public class SMRemapper extends Remapper {
 			// Normalize to old or new name
 			String classname = ctc.getText();
 			classname = (toOld ? classMap.inverse() : classMap).getOrDefault(classname, classname);
-			return "L" + classname + ";";
+			return "L" + classname.replace('.', '/') + ";";
 		}
 
 		public String make(AstralMapParser.ArrayTypeContext atc, boolean toOld) {
@@ -193,6 +193,8 @@ public class SMRemapper extends Remapper {
 
 			if (mdc.result().type() != null) {
 				sig.append(make(mdc.result(), toOld));
+			} else {
+				sig.append("V"); // void "type"
 			}
 
 			return sig.toString();
@@ -218,7 +220,7 @@ public class SMRemapper extends Remapper {
 		@Override
 		protected void processBody(String oldname, String newname, List<AstralMapParser.ClassBodyContext> lcbc) {
 			if (!oldname.equals(newname)) {
-				classMap.put(oldname, newname);
+				classMap.put(oldname.replace('.', '/'), newname.replace('.', '/'));
 			}
 		}
 	}
